@@ -466,23 +466,23 @@ func (e *Environment) ensureImageExists(image string) error {
 
 func (e *Environment) convertMounts() []mount.Mount {
 	mounts := e.Configuration.Mounts()
-	out := make([]mount.Mount, 0, len(mounts))
-	for _, m := range mounts {
-		if m.Device {
-			continue
-		}
-		out = append(out, mount.Mount{
+	out := make([]mount.Mount, len(mounts))
+	for i, m := range mounts {
+		out[i] = mount.Mount{
 			Type:     mount.TypeBind,
 			Source:   m.Source,
 			Target:   m.Target,
 			ReadOnly: m.ReadOnly,
-		})
+		}
 	}
 	return out
 }
 
 // convertDevices returns the device mappings for any mounts that point to device nodes.
-// Docker expands a directory source (e.g. /dev/dri) into every device node it contains.
+// Docker expands a directory source (e.g. /dev/dri) into every device node it contains,
+// but skips anything else in it, so device mounts are still bind mounted as well (see
+// convertMounts) to keep regular files and symlinks such as /dev/dri/by-path available.
+// The device mappings are what grant the container cgroup access to the devices.
 func (e *Environment) convertDevices() []container.DeviceMapping {
 	var out []container.DeviceMapping
 	for _, m := range e.Configuration.Mounts() {

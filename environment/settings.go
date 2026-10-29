@@ -34,7 +34,7 @@ type Mount struct {
 
 	// Whether the source is a device node (or a directory of device nodes, such as /dev/dri)
 	// rather than a regular file or directory. Devices are passed through to the environment
-	// as devices instead of bind mounts so that the container is granted access to them.
+	// as devices in addition to the regular mount so that the container is granted access to them.
 	Device bool `json:"-"`
 }
 

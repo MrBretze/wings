@@ -117,8 +117,14 @@ func (s *Server) customMounts() []environment.Mount {
 }
 
 // isDevicePath returns true if the path is a device node, or a directory containing
-// at least one device node (e.g. /dev/dri). Symlinks to device nodes are followed.
+// at least one device node (e.g. /dev/dri). A symlinked path is resolved first, but
+// symlinks inside a directory are not followed.
 func isDevicePath(path string) bool {
+	// WalkDir does not follow a symlinked root, so resolve it before walking.
+	path, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return false
+	}
 	st, err := os.Stat(path)
 	if err != nil {
 		return false

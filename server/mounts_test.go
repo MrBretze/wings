@@ -17,11 +17,22 @@ func TestIsDevicePath(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	devLink := filepath.Join(dir, "dev-link")
+	if err := os.Symlink("/dev", devLink); err != nil {
+		t.Fatal(err)
+	}
+	fileLink := filepath.Join(dir, "file-link")
+	if err := os.Symlink(file, fileLink); err != nil {
+		t.Fatal(err)
+	}
+
 	cases := map[string]bool{
 		"/dev/null":                   true,
 		"/dev":                        true,
+		devLink:                       true,
 		dir:                           false,
 		file:                          false,
+		fileLink:                      false,
 		filepath.Join(dir, "missing"): false,
 	}
 	for path, want := range cases {
