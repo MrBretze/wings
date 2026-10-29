@@ -1,6 +1,7 @@
 package server
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -101,6 +102,7 @@ func (s *Server) customMounts() []environment.Mount {
 				Source:   source,
 				Target:   target,
 				ReadOnly: m.ReadOnly,
+				Device:   isDevicePath(source),
 			})
 
 			break
@@ -112,4 +114,32 @@ func (s *Server) customMounts() []environment.Mount {
 	}
 
 	return mounts
+}
+
+// isDevicePath returns true if the path is a device node, or a directory containing
+// at least one device node (e.g. /dev/dri). Symlinks to device nodes are followed.
+func isDevicePath(path string) bool {
+	st, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	if st.Mode()&os.ModeDevice != 0 {
+		return true
+	}
+	if !st.IsDir() {
+		return false
+	}
+
+	found := false
+	_ = filepath.WalkDir(path, func(_ string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.Type()&os.ModeDevice != 0 {
+			found = true
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	return found
 }

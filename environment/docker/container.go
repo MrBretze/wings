@@ -234,6 +234,9 @@ func (e *Environment) Create() error {
 		}
 	}
 
+	resources := e.Configuration.Limits().AsContainerResources()
+	resources.Devices = e.convertDevices()
+
 	hostConf := &container.HostConfig{
 		PortBindings: a.DockerBindings(),
 
@@ -249,7 +252,7 @@ func (e *Environment) Create() error {
 
 		// Define resource limits for the container based on the data passed through
 		// from the Panel.
-		Resources: e.Configuration.Limits().AsContainerResources(),
+		Resources: resources,
 
 		DNS: cfg.Docker.Network.Dns,
 
@@ -463,14 +466,38 @@ func (e *Environment) ensureImageExists(image string) error {
 
 func (e *Environment) convertMounts() []mount.Mount {
 	mounts := e.Configuration.Mounts()
-	out := make([]mount.Mount, len(mounts))
-	for i, m := range mounts {
-		out[i] = mount.Mount{
+	out := make([]mount.Mount, 0, len(mounts))
+	for _, m := range mounts {
+		if m.Device {
+			continue
+		}
+		out = append(out, mount.Mount{
 			Type:     mount.TypeBind,
 			Source:   m.Source,
 			Target:   m.Target,
 			ReadOnly: m.ReadOnly,
+		})
+	}
+	return out
+}
+
+// convertDevices returns the device mappings for any mounts that point to device nodes.
+// Docker expands a directory source (e.g. /dev/dri) into every device node it contains.
+func (e *Environment) convertDevices() []container.DeviceMapping {
+	var out []container.DeviceMapping
+	for _, m := range e.Configuration.Mounts() {
+		if !m.Device {
+			continue
 		}
+		perms := "rwm"
+		if m.ReadOnly {
+			perms = "rm"
+		}
+		out = append(out, container.DeviceMapping{
+			PathOnHost:        m.Source,
+			PathInContainer:   m.Target,
+			CgroupPermissions: perms,
+		})
 	}
 	return out
 }
