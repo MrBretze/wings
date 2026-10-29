@@ -36,7 +36,10 @@ func TestIsDevicePath(t *testing.T) {
 		filepath.Join(dir, "missing"): false,
 	}
 	for path, want := range cases {
-		if got := isDevicePath(path); got != want {
+		got, err := isDevicePath(path)
+		if err != nil {
+			t.Errorf("isDevicePath(%q) returned error: %v", path, err)
+		} else if got != want {
 			t.Errorf("isDevicePath(%q) = %v, want %v", path, got, want)
 		}
 	}
